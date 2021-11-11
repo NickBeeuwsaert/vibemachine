@@ -1,4 +1,3 @@
-import { ShaderError } from "../exception.js";
 import GridShader from "./grid.js";
 /**
  *
@@ -44,6 +43,17 @@ export function link(gl, vertexShader, fragmentShader) {
   }
 
   return program;
+}
+export class ShaderError extends Error {
+  /**
+   *
+   * @param {string} message
+   */
+  constructor(message) {
+    super();
+    /** @type {string} */
+    this.message = message;
+  }
 }
 
 export { default } from "./grid.js";

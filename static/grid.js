@@ -39,7 +39,7 @@ export function generateGrid({ cols, rows, tileSize, uvScale = null }) {
   for (let idx = 0; idx < width * height; idx++) {
     const y = Math.floor(idx / width),
       x = idx % width;
-    vertices.push(x * tileSize - cx, y * tileSize - cy, 0);
+    vertices.push(x * tileSize - cx, 0, y * tileSize - cy);
 
     uv.push((x / cols) * uvScale.x, (y / rows) * uvScale.y);
   }

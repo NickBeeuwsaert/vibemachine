@@ -73,22 +73,29 @@ function toVNode(node, map) {
   }
 }
 
-export default function jsx(strings, ...values) {
-  const [firstString] = strings,
-    map = Object.fromEntries(values.map((value) => [`__${uuidv4()}__`, value])),
-    keys = Object.keys(map);
-  let i,
-    joiner = [firstString];
+export function bind(namespace) {
+  return function jsx(strings, ...values) {
+    const [firstString] = strings,
+      map = Object.fromEntries(
+        values.map((value) => [`__${uuidv4()}__`, value])
+      ),
+      keys = Object.keys(map);
+    let i,
+      joiner = [firstString];
 
-  for (i = 1; i <= Math.min(strings.length, values.length); i++) {
-    joiner.push(keys[i - 1], strings[i]);
-  }
+    for (i = 1; i <= Math.min(strings.length, values.length); i++) {
+      joiner.push(keys[i - 1], strings[i]);
+    }
 
-  return reifyVNode(
-    toVNode(
-      parser.parseFromString(joiner.join(""), "application/xml")
-        .documentElement,
-      map
-    )
-  );
+    return reifyVNode(
+      toVNode(
+        parser.parseFromString(joiner.join(""), "application/xml")
+          .documentElement,
+        map
+      ),
+      namespace
+    );
+  };
 }
+
+export default bind(HTML_NS);

@@ -5,7 +5,7 @@ const scene = new Scene(canvas);
 // console.log(scene.orthographic(15, -15, 15, -15, 150, -150)._buffer);
 
 scene.perspective(
-  (45 * Math.PI) / 180,
+  (15 * Math.PI) / 180,
   canvas.clientWidth / canvas.clientHeight,
   0.1,
   1000.0
@@ -15,7 +15,7 @@ window.addEventListener("resize", () => {
   scene.resize();
 
   scene.perspective(
-    (45 * Math.PI) / 180,
+    (15 * Math.PI) / 180,
     canvas.clientWidth / canvas.clientHeight,
     0.1,
     1000.0

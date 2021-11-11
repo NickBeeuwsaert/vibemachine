@@ -1,17 +1,17 @@
+import { cubicBezier, cubicBezierZeros } from "./bezier.js";
 import { reify } from "./decorator.js";
 import jsx from "./jsx.js";
 import { Matrix } from "./matrix.js";
-import GridModel from "./model/grid.js";
+import { GridModel } from "./model/main.js";
 
 const CANVAS = Symbol(),
   GL = Symbol(),
-  MODEL = Symbol(),
   PROJECTION_MATRIX = Symbol();
 
 const mountainTexture = jsx`
 <svg width="512" height="512">
   <defs>
-    <filter id="noise">
+    <filter id="noise" x="0" y="0" width="100%" height="100%">
       <feTurbulence
         type="fractalNoise"
         baseFrequency="0.025"
@@ -55,13 +55,6 @@ export default class Scene {
   }
 
   get [PROJECTION_MATRIX]() {
-    // Create a perspective matrix, a special matrix that is
-    // used to simulate the distortion of perspective in a camera.
-    // Our field of view is 45 degrees, with a width/height
-    // ratio that matches the display size of the canvas
-    // and we only want to see objects between 0.1 units
-    // and 100 units away from the camera.
-
     const { [GL]: gl } = this;
     return new Matrix(
       Array.from({ length: 16 }, () => 0),
@@ -69,44 +62,76 @@ export default class Scene {
     ).identity();
   }
 
+  get roadControlPoints() {
+    const [, , cp2, cp3] = this.mountainControlPoints;
+    return [
+      cp3,
+      { x: cp3.x + (cp3.x - cp2.x), y: cp3.y + (cp3.y - cp2.y) },
+      { x: 180, y: 10 },
+      { x: 200, y: 10 },
+    ];
+  }
+
+  get mountainControlPoints() {
+    return [
+      { x: 50, y: 0 },
+      { x: 60, y: 30 },
+      { x: 75, y: -15 },
+      { x: 100, y: 0 },
+    ];
+  }
+
+  get zOffset() {
+    const [roadStart, , , roadStop] = this.roadControlPoints;
+    const [mountainStart, , , mountainStop] = this.mountainControlPoints;
+    return mountainStart.x - roadStop.x - mountainStart.x;
+  }
+
   get road() {
     const { [GL]: gl } = this;
     const angle = -89 * (Math.PI / 180);
     const adjacent = Math.tan(angle) / (200 * 0.25);
+    const controlPoints = this.roadControlPoints;
+    const [roadStart, , , roadStop] = controlPoints;
+    const [mountainStart, , , mountainStop] = this.mountainControlPoints;
+
     const model = new GridModel({
       gl,
-      width: 120,
+      width: 120 | 1,
       height: 200,
-      tileSize: 0.25,
+      tileSize: 1 / 4,
+      curve1: controlPoints.slice(0, 2).flatMap(({ x, y }) => [x, y]),
+      curve2: controlPoints.slice(2).flatMap(({ x, y }) => [x, y]),
     });
 
-    model.modelViewMatrix
-      .translate(0, 0, -20)
-      .rotate(angle, 1, 0, 0)
-      .translate(0, -adjacent, 0);
+    console.log("Z OFFSET: ", this.zOffset);
+
+    model.modelViewMatrix.translate(0, -this.horizonOffset, this.zOffset);
 
     return model;
   }
 
+  get horizonOffset() {
+    const [cp0, cp1, cp2, cp3] = this.mountainControlPoints;
+    const curve = cubicBezier(cp0.y, cp1.y, cp2.y, cp3.y);
+    const [z0, z1] = cubicBezierZeros(cp0.y, cp1.y, cp2.y, cp3.y);
+    return Math.max(curve(z0), curve(z1));
+  }
+
   get mountains() {
     const { [GL]: gl } = this;
+    const controlPoints = this.mountainControlPoints;
     const model = new GridModel({
       gl,
-      width: 200,
-      height: 200,
-      tileSize: 0.25,
+      width: 100 | 1,
+      height: 100,
+      tileSize: 1 / 2,
       noiseTexture: mountainTexture,
-      noiseScale: 5,
-      angleStep: 1 / 5,
+      noiseScale: 3,
+      curve1: controlPoints.slice(0, 2).flatMap(({ x, y }) => [x, y]),
+      curve2: controlPoints.slice(2).flatMap(({ x, y }) => [x, y]),
     });
-
-    model.modelViewMatrix
-      .translate(0, 5.5, (-200 * 1) / 4)
-      .scale(1, 1, -1)
-      .rotate(80 * (Math.PI / 180), 1, 0, 0);
-    // .rotate(100 * (Math.PI / 180), 1, 0, 0);
-    // .rotate(90 * (Math.PI / 180), 0, 0, 1);
-    // .translate(0, 0, -(120 + 250) * 0.25);
+    model.modelViewMatrix.translate(0, -this.horizonOffset, this.zOffset);
     return model;
   }
 

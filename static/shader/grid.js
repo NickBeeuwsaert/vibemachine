@@ -23,31 +23,114 @@ const vertexShaderSource = `
   uniform sampler2D uNoise;
   uniform highp float uNoiseOffset;
   uniform highp float uVertexOffset;
-  uniform highp float uAngleStep;
+  uniform highp float uTileSize;
   uniform highp float uNoiseScale;
 
+  uniform mat2 uFirstTwoControlPoints;
+  uniform mat2 uLastTwoControlPoints;
+  uniform highp vec2 uSize;
+
   varying highp vec2 vTexCoord;
+
+
+  float cubicBezierCurve(float t, float p0, float p1, float p2, float p3) {
+    float a = pow(1.0 - t, 3.0) * p0;
+    float b = pow(1.0 - t, 2.0) * t * p1 * 3.0;
+    float c = pow(t, 2.0) * (1.0 - t) * p2 * 3.0;
+    float d = pow(t, 3.0) * p3;
+
+    return a + b + c + d;
+  }
+
+  vec2 cubicBezierCurve2D(float t, vec2 p0, vec2 p1, vec2 p2, vec2 p3) {
+    return vec2(
+      cubicBezierCurve(t, p0.x, p1.x, p2.x, p3.x),
+      cubicBezierCurve(t, p0.y, p1.y, p2.y, p3.y)
+    );
+  }
+
+  float cubicBezierCurveDerivative(float t, float p0, float p1, float p2, float p3) {
+    float a = 3.0 * (p3 + 3.0 * p1 - 3.0 * p2 - p0);
+    float b = 6.0 * (p0 + p2 - 2.0 * p1);
+    float c = 3.0 * (p1 - p0);
+
+    return pow(t, 2.0) * a + t * b + c;
+  }
+
+  vec2 cubicBezierCurveDerivative2D(float t, vec2 p0, vec2 p1, vec2 p2, vec2 p3) {
+    return vec2(
+      cubicBezierCurveDerivative(t, p0.x, p1.x, p2.x, p3.x),
+      cubicBezierCurveDerivative(t, p0.y, p1.y, p2.y, p3.y)
+    );
+  }
+
+  vec2 rotate(float theta, vec2 p) {
+    return vec2(
+      p.x * cos(theta) - p.y * sin(theta),
+      p.x * sin(theta) + p.y * cos(theta)
+    );
+  }
+
+  vec2 wrapAroundCurve(vec2 position, float length, vec2 cp0, vec2 cp1, vec2 cp2, vec2 cp3) {
+    float t = position.x / length + 0.5;
+    vec2 translation = cubicBezierCurve2D(t, cp0, cp1, cp2, cp3);
+    vec2 derivative = cubicBezierCurveDerivative2D(t, cp0, cp1, cp2, cp3);
+
+    float theta = atan(derivative.y, derivative.x);
+    return rotate(theta, vec2(0, position.y)) + translation;
+  }
+
+  vec3 displacePosition(
+    vec3 position,
+    sampler2D noiseTexture,
+    vec2 texCoord,
+    float noiseOffset, float noiseScale,
+    float vertexOffset
+  ) {
+    return vec3(
+      position.x,
+      position.y + (
+        texture2D(
+          noiseTexture,
+          vec2(
+            texCoord.s,
+            texCoord.t - noiseOffset
+          )
+        ).a - 0.5
+      ) * noiseScale,
+      position.z + vertexOffset
+    );
+  }
+
+
   void main() {
     vTexCoord = aTexCoord;
-    vec4 displacedPosition = aVertexPosition + vec4(
-      0,
-      -uVertexOffset,
-      (
-        texture2D(uNoise, vec2(aTexCoord.s, aTexCoord.t + uNoiseOffset)).a
-      ) * uNoiseScale,
-      0
+    // vec4 displacedPosition = vec4(
+    //   aVertexPosition.x,
+    //   aVertexPosition.y + (
+    //     texture2D(uNoise, vec2(aTexCoord.s, aTexCoord.t - uNoiseOffset)).a - 0.5
+    //   ) * uNoiseScale,
+    //   aVertexPosition.z + uVertexOffset,
+    //   1.0
+    // );
+    vec3 displacedPosition = displacePosition(
+      aVertexPosition.xyz,
+      uNoise,
+      aTexCoord,
+      uNoiseOffset, uNoiseScale,
+      uVertexOffset
+    );
+    vec2 rotatedPosition = wrapAroundCurve(
+      displacedPosition.zy,
+      uSize.y * uTileSize,
+      uFirstTwoControlPoints[0],
+      uFirstTwoControlPoints[1],
+      uLastTwoControlPoints[0],
+      uLastTwoControlPoints[1]
     );
 
-    vec2 pos = displacedPosition.yz;
-    highp float rotation = uAngleStep * pos.x;
-    vec2 rotated = vec2(
-      pos.x * cos(rotation) - sin(rotation) * pos.y,
-      pos.x * sin(rotation) + pos.y * cos(rotation)
-    );
-
-    vec4 position = vec4(displacedPosition.x, rotated.x, rotated.y, 1.0);
-
-    gl_Position = uProjectionMatrix * uModelViewMatrix * position;
+    gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(displacedPosition.x, rotatedPosition.y, rotatedPosition.x, 1.0);
+    // gl_Position = uProjectionMatrix * uModelViewMatrix * displacedPosition;
   }
 `,
   fragmentShaderSource = `
@@ -134,11 +217,23 @@ export default class GridShader {
 
     return gl.getUniformLocation(program, "uNoiseScale");
   }
-  get ["angleStep"]() {
+  get ["tileSize"]() {
     const { [PROGRAM]: program, [GL]: gl } = this;
 
-    return gl.getUniformLocation(program, "uAngleStep");
+    return gl.getUniformLocation(program, "uTileSize");
   }
+
+  get ["curve1"]() {
+    const { [PROGRAM]: program, [GL]: gl } = this;
+
+    return gl.getUniformLocation(program, "uFirstTwoControlPoints");
+  }
+  get ["curve2"]() {
+    const { [PROGRAM]: program, [GL]: gl } = this;
+
+    return gl.getUniformLocation(program, "uLastTwoControlPoints");
+  }
+
   /**
    * @typedef Settings
    * @property {WebGLBuffer} vertexBuffer
@@ -151,7 +246,9 @@ export default class GridShader {
    * @property {number} vertexOffset
    * @property {number[]} size
    * @property {number} noiseScale
-   * @property {number} angleStep
+   * @property {number} tileSize
+   * @property {number[]} curve1
+   * @property {number[]} curve2
    *
    * @param {Settings} settings
    */
@@ -166,7 +263,9 @@ export default class GridShader {
     vertexOffset,
     size,
     noiseScale,
-    angleStep,
+    tileSize,
+    curve1,
+    curve2,
   }) {
     const {
       [GL]: gl,
@@ -180,8 +279,10 @@ export default class GridShader {
       [NOISE_OFFSET]: noiseOffsetUniform,
       [VERTEX_OFFSET]: vertexOffsetUniform,
       [SIZE]: sizeUniform,
-      angleStep: angleStepUniform,
+      tileSize: tileSizeUniform,
       noiseScale: noiseScaleUniform,
+      curve1: curve1Uniform,
+      curve2: curve2Uniform,
     } = this;
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -198,10 +299,14 @@ export default class GridShader {
       projectionMatrix._buffer
     );
     gl.uniformMatrix4fv(modelViewMatrixUniform, false, modelViewMatrix._buffer);
+
+    gl.uniformMatrix2fv(curve1Uniform, false, curve1);
+    gl.uniformMatrix2fv(curve2Uniform, false, curve2);
+
     gl.uniform1f(noiseOffsetUniform, noiseOffset);
     gl.uniform1f(vertexOffsetUniform, vertexOffset);
     gl.uniform1f(noiseScaleUniform, noiseScale);
-    gl.uniform1f(angleStepUniform, angleStep * (Math.PI / 180));
+    gl.uniform1f(tileSizeUniform, tileSize);
     gl.uniform2fv(sizeUniform, size);
 
     gl.activeTexture(gl.TEXTURE0);
@@ -268,9 +373,9 @@ Object.defineProperties(GridShader.prototype, {
       Object.getOwnPropertyDescriptor(GridShader.prototype, "noiseScale").get
     ),
   },
-  ["angleStep"]: {
+  ["tileSize"]: {
     get: reify(
-      Object.getOwnPropertyDescriptor(GridShader.prototype, "angleStep").get
+      Object.getOwnPropertyDescriptor(GridShader.prototype, "tileSize").get
     ),
   },
 });

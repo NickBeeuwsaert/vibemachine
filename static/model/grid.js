@@ -33,7 +33,7 @@ const defaultTileTexture = jsx`
 const defaultNoiseTexture = jsx`
   <svg width="512" height="512">
     <defs>
-      <filter id="noise">
+      <filter id="noise" x="0" y="0" width="100%" height="100%">
         <feTurbulence
           type="fractalNoise"
           baseFrequency="0.05"
@@ -72,6 +72,8 @@ export default class GridModel {
     noiseTexture = defaultNoiseTexture,
     noiseScale = 3.0,
     angleStep = -0.5,
+    curve1,
+    curve2,
   }) {
     this.width = width;
     this.height = height;
@@ -80,6 +82,8 @@ export default class GridModel {
     this.noiseTexture = noiseTexture;
     this.noiseScale = noiseScale;
     this.angleStep = angleStep;
+    this.curve1 = curve1;
+    this.curve2 = curve2;
     this[GL] = gl;
   }
 
@@ -192,6 +196,8 @@ export default class GridModel {
       [NOISE_TEXTURE]: noiseTexture,
       noiseScale,
       angleStep,
+      curve1,
+      curve2,
     } = this;
 
     let elapsed = Date.now() - this.start;
@@ -214,7 +220,9 @@ export default class GridModel {
       noiseOffset: this.noiseOffset,
       size: mesh.size,
       noiseScale,
-      angleStep,
+      tileSize: mesh.tileSize,
+      curve1,
+      curve2,
     });
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
