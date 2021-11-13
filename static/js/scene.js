@@ -112,10 +112,22 @@ export default class Scene {
 
   resize() {
     const { gl, canvas } = this;
-
-    gl.canvas.width = canvas.clientWidth;
-    gl.canvas.height = canvas.clientHeight;
-    gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
+    const maxDimension = 1024;
+    let w = canvas.clientWidth,
+      h = canvas.clientHeight,
+      aspectRatio = w / h;
+    if (Math.min(w, h) > maxDimension) {
+      if (w > h) {
+        w = maxDimension;
+        h = maxDimension / aspectRatio;
+      } else {
+        w = maxDimension * aspectRatio;
+        h = maxDimension;
+      }
+    }
+    gl.canvas.width = w;
+    gl.canvas.height = h;
+    gl.viewport(0, 0, w, h);
   }
 
   firstRender = true;
