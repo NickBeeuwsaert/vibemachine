@@ -10,7 +10,7 @@ export function createImageFromSVG(svgNode) {
   const dataURI = `data:image/svg+xml;base64,${btoa(
     xmlSerializer.serializeToString(svgNode)
   )}`;
-  console.log(dataURI);
+
   return new Promise((resolve, reject) => {
     const image = new Image();
 
@@ -20,7 +20,21 @@ export function createImageFromSVG(svgNode) {
     image.src = dataURI;
   });
 }
+/**
+ *
+ * @param {URL|string} url
+ * @returns {Promise<HTMLImageElement>}
+ */
+export function createImageFromURL(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
 
+    image.addEventListener("load", () => resolve(image), { once: true });
+    image.addEventListener("error", (e) => reject(e), { once: true });
+
+    image.src = url.toString();
+  });
+}
 /**
  *
  * @param {WebGLRenderingContext} gl

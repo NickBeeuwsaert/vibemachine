@@ -1,4 +1,3 @@
-import GridShader from "./grid.js";
 /**
  *
  * @param {WebGLRenderingContext} gl
