@@ -5,8 +5,11 @@ import { GridModel } from "./model/main.js";
 import { createImageFromURL } from "./texture.js";
 
 export default class Scene {
-  constructor(canvas) {
+  constructor({ canvas, mountainTexture, roadTexture, tileTexture }) {
     this.canvas = canvas;
+    this.mountainTexture = mountainTexture;
+    this.roadTexture = roadTexture;
+    this.tileTexture = tileTexture;
   }
 
   perspective(fieldOfView, aspect, zNear, zFar) {
@@ -64,13 +67,13 @@ export default class Scene {
   }
 
   get road() {
-    const { gl } = this;
+    const { gl, roadTexture, tileTexture } = this;
     const controlPoints = this.roadControlPoints;
 
     const model = new GridModel({
       gl,
-      noiseTexture: createImageFromURL("./static/images/roadTexture.svg"),
-      tileTexture: createImageFromURL("./static/images/tile.svg"),
+      noiseTexture: roadTexture, //: createImageFromURL("./static/images/roadTexture.svg"),
+      tileTexture, //: createImageFromURL("./static/images/tile.svg"),
       width: 120 | 1,
       height: 200,
       tileSize: 1 / 4,
@@ -92,12 +95,12 @@ export default class Scene {
   }
 
   get mountains() {
-    const { gl } = this,
+    const { gl, mountainTexture, tileTexture } = this,
       controlPoints = this.mountainControlPoints,
       model = new GridModel({
         gl,
-        noiseTexture: createImageFromURL("./static/images/mountainTexture.svg"),
-        tileTexture: createImageFromURL("./static/images/tile.svg"),
+        noiseTexture: mountainTexture, //: createImageFromURL("./static/images/mountainTexture.svg"),
+        tileTexture, //: createImageFromURL("./static/images/tile.svg"),
         width: 100 | 1,
         height: 100,
         tileSize: 1 / 2,
@@ -132,20 +135,20 @@ export default class Scene {
 
   firstRender = true;
 
-  async draw() {
-    const { gl, road, mountains, projectionMatrix } = this;
+  draw() {
+    // const { gl, road, mountains, projectionMatrix } = this;
 
     if (this.firstRender) {
       this.resize();
       this.firstRender = false;
     }
-    gl.canvas.width += 0;
-    gl.clearDepth(1.0);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
+    this.gl.canvas.width += 0;
+    this.gl.clearDepth(1.0);
+    this.gl.enable(this.gl.DEPTH_TEST);
+    this.gl.depthFunc(this.gl.LEQUAL);
 
-    await mountains.draw(projectionMatrix);
-    await road.draw(projectionMatrix);
+    this.mountains.draw(this.projectionMatrix);
+    this.road.draw(this.projectionMatrix);
   }
 }
 

@@ -1,5 +1,6 @@
 import { reify } from "../decorator.js";
 import { Matrix } from "../matrix.js";
+import GridModel from "../model/grid.js";
 import { link, compile } from "./main.js";
 
 const GL = Symbol(),
@@ -231,88 +232,77 @@ export default class GridShader {
     return gl.getUniformLocation(program, "uLastTwoControlPoints");
   }
 
-  /**GRID
-   * @typedef Settings
-   * @property {WebGLBuffer} vertexBuffer
-   * @property {Matrix} projectionMatrix
-   * @property {Matrix} modelViewMatrix
-   * @property {WebGLBuffer} texCoordBuffer
-   * @property {WebGLTexture} gridTexture
-   * @property {WebGLTexture} noiseTexture
-   * @property {number} noiseOffset
-   * @property {number} vertexOffset
-   * @property {number[]} size
-   * @property {number} noiseScale
-   * @property {number} tileSize
-   * @property {number[]} curve1
-   * @property {number[]} curve2
+  // activate({
+  //   vertexBuffer,
+  //   projectionMatrix,
+  //   modelViewMatrix,
+  //   texCoordBuffer,
+  //   gridTexture,
+  //   noiseTexture,
+  //   noiseOffset,
+  //   vertexOffset,
+  //   size,
+  //   noiseScale,
+  //   tileSize,
+  //   curve1,
+  //   curve2,
+  // }) {
+  /**
    *
-   * @param {Settings} settings
+   * @param {GridModel} model
+   * @param {number} vertexOffset
+   * @param {Matrix} projectionMatrix
    */
-  activate({
-    vertexBuffer,
-    projectionMatrix,
-    modelViewMatrix,
-    texCoordBuffer,
-    gridTexture,
-    noiseTexture,
-    noiseOffset,
-    vertexOffset,
-    size,
-    noiseScale,
-    tileSize,
-    curve1,
-    curve2,
-  }) {
-    const {
-      gl,
-      program,
-      vertexPositionAttribute,
-      texCoordAttribute,
-      modelViewMatrixUniform,
-      projectionMatrixUniform,
-      gridTextureUniform,
-      noiseTextureUniform,
-      noiseOffsetUniform,
-      vertexOffsetUniform,
-      sizeUniform,
-      tileSizeUniform,
-      noiseScaleUniform,
-      curve1: curve1Uniform,
-      curve2: curve2Uniform,
-    } = this;
+  activate(model, vertexOffset, projectionMatrix) {
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, model.vertexBuffer);
+    this.gl.vertexAttribPointer(
+      this.vertexPositionAttribute,
+      3,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.enableVertexAttribArray(this.vertexPositionAttribute);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, model.texCoordBuffer);
+    this.gl.vertexAttribPointer(
+      this.texCoordAttribute,
+      2,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.enableVertexAttribArray(this.texCoordAttribute);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(vertexPositionAttribute);
-    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-    gl.vertexAttribPointer(texCoordAttribute, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(texCoordAttribute);
-
-    gl.useProgram(program);
-    gl.uniformMatrix4fv(
-      projectionMatrixUniform,
+    this.gl.useProgram(this.program);
+    this.gl.uniformMatrix4fv(
+      this.projectionMatrixUniform,
       false,
       projectionMatrix._buffer
     );
-    gl.uniformMatrix4fv(modelViewMatrixUniform, false, modelViewMatrix._buffer);
+    this.gl.uniformMatrix4fv(
+      this.modelViewMatrixUniform,
+      false,
+      model.modelViewMatrix._buffer
+    );
 
-    gl.uniformMatrix2fv(curve1Uniform, false, curve1);
-    gl.uniformMatrix2fv(curve2Uniform, false, curve2);
+    this.gl.uniformMatrix2fv(this.curve1, false, model.curve1);
+    this.gl.uniformMatrix2fv(this.curve2, false, model.curve2);
 
-    gl.uniform1f(noiseOffsetUniform, noiseOffset);
-    gl.uniform1f(vertexOffsetUniform, vertexOffset);
-    gl.uniform1f(noiseScaleUniform, noiseScale);
-    gl.uniform1f(tileSizeUniform, tileSize);
-    gl.uniform2fv(sizeUniform, size);
+    this.gl.uniform1f(this.noiseOffsetUniform, model.noiseOffset);
+    this.gl.uniform1f(this.vertexOffsetUniform, vertexOffset);
+    this.gl.uniform1f(this.noiseScaleUniform, model.noiseScale);
+    this.gl.uniform1f(this.tileSizeUniform, model.mesh.tileSize);
+    this.gl.uniform2fv(this.sizeUniform, model.mesh.size);
 
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, gridTexture);
-    gl.uniform1i(gridTextureUniform, 0);
+    this.gl.activeTexture(this.gl.TEXTURE0);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, model._gridTexture);
+    this.gl.uniform1i(this.gridTextureUniform, 0);
 
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
-    gl.uniform1i(noiseTextureUniform, 1);
+    this.gl.activeTexture(this.gl.TEXTURE1);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, model._noiseTexture);
+    this.gl.uniform1i(this.noiseTextureUniform, 1);
   }
 }
 

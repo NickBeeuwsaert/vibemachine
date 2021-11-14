@@ -98,63 +98,71 @@ export default class GridModel {
 
   get _gridTexture() {
     const { gl, tileTexture } = this;
+    console.log(this.noiseTexture);
 
-    return tileTexture.then((image) => createTexture(gl, image));
+    return createTexture(gl, tileTexture);
   }
 
   get _noiseTexture() {
     const { gl, noiseTexture } = this;
-
-    return noiseTexture.then((image) => createTexture(gl, image));
+    console.log(this.noiseTexture);
+    return createTexture(gl, noiseTexture);
+    // return noiseTexture.then((image) => createTexture(gl, image));
   }
 
   /**
    *
    * @param {Matrix} projectionMatrix
    */
-  async draw(projectionMatrix) {
-    const {
-      gl,
-      shader,
-      mesh,
-      vertexBuffer,
-      indexBuffer,
-      modelViewMatrix,
-      texCoordBuffer,
-      _gridTexture,
-      _noiseTexture,
-      noiseScale,
-      curve1,
-      curve2,
-    } = this;
+  draw(projectionMatrix) {
+    // const {
+    //   gl,
+    //   shader,
+    //   mesh,
+    //   vertexBuffer,
+    //   indexBuffer,
+    //   modelViewMatrix,
+    //   texCoordBuffer,
+    //   _gridTexture,
+    //   _noiseTexture,
+    //   noiseScale,
+    //   curve1,
+    //   curve2,
+    // } = this;
 
     let elapsed = Date.now() - this.start;
 
     if (elapsed > this.interval) {
       elapsed = 0;
       this.start = Date.now();
-      this.noiseOffset += (1 / mesh.height) * mesh.tileSize;
+      this.noiseOffset += (1 / this.mesh.height) * this.mesh.tileSize;
     }
-    const vertexOffset = (elapsed / this.interval) * mesh.tileSize;
+    const vertexOffset = (elapsed / this.interval) * this.mesh.tileSize;
 
-    shader.activate({
-      vertexBuffer,
-      modelViewMatrix,
-      projectionMatrix,
-      texCoordBuffer,
-      vertexOffset,
-      gridTexture: await _gridTexture,
-      noiseTexture: await _noiseTexture,
-      noiseOffset: this.noiseOffset,
-      size: mesh.size,
-      noiseScale,
-      tileSize: mesh.tileSize,
-      curve1,
-      curve2,
-    });
+    this.shader.activate(this, vertexOffset, projectionMatrix);
+    // shader.activate({
+    //   vertexBuffer,
+    //   modelViewMatrix,
+    //   projectionMatrix,
+    //   texCoordBuffer,
+    //   vertexOffset,
+    //   gridTexture: _gridTexture,
+    //   noiseTexture: _noiseTexture,
+    //   noiseOffset: this.noiseOffset,
+    //   size: mesh.size,
+    //   noiseScale,
+    //   tileSize: mesh.tileSize,
+    //   curve1,
+    //   curve2,
+    // });
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+    this.gl.drawElements(
+      this.gl.TRIANGLES,
+      this.mesh.indices.length,
+      this.gl.UNSIGNED_SHORT,
+      0
+    );
   }
 }
 
